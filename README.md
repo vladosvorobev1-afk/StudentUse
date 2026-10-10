@@ -39,59 +39,101 @@ Streak — серия дней подряд с тренировками
 Русский голос и интерфейс
 
 Стек технологий
-Компонент	Версия / Примечание
-Kotlin	2.2.10
-AGP	9.2.0
-Jetpack Compose	BOM 2026.02.01
-CameraX	1.5.0
-MediaPipe Tasks Vision	0.10.0
-Room	2.8.5
-Accompanist Permissions	0.37.3
-KSP	2.3.12
-compileSdk / targetSdk	37
-minSdk	26 (Android 8.0)
-NDK	только arm64-v8a
-Java	11
+Kotlin — 2.2.10
+
+Android Gradle Plugin — 9.2.0
+
+Jetpack Compose — BOM 2026.02.01
+
+CameraX — 1.5.0
+
+MediaPipe Tasks Vision — 0.10.0
+
+Room — 2.8.5
+
+Accompanist Permissions — 0.37.3
+
+KSP — 2.3.12
+
+compileSdk / targetSdk — 37
+
+minSdk — 26 (Android 8.0)
+
+NDK — только arm64-v8a
+
+Java — 11
+
 Архитектура
-app/src/main/java/com/example/studentuse/
-├── MainActivity.kt              — точка входа, навигация, PoseScreen (приседания)
-├── ExercisePickerScreen.kt      — экран выбора упражнения
-├── HistoryScreen.kt             — история тренировок + streak + рекорды
-├── PushupScreen.kt              — экран отжиманий
-├── PlankScreen.kt               — экран планки
-├── LungeScreen.kt               — экран выпадов
-├── SettingsAppScreen.kt         — общие настройки
-├── SettingsScreen.kt            — настройки приседаний
-├── PushupSettingsScreen.kt      — настройки отжиманий
-├── PlankSettingsScreen.kt       — настройки планки
-├── LungeSettingsScreen.kt       — настройки выпадов
-├── AppSettings.kt               — SharedPreferences
-├── WorkoutRecord.kt             — Room Entity + DAO + Database
-├── WorkoutRepository.kt         — репозиторий, streak, рекорды
-├── pose/
-│   ├── PosePoint.kt             — data-класс точки скелета
-│   ├── SquatAnalyzer.kt         — анализатор приседаний
-│   ├── PushupAnalyzer.kt        — анализатор отжиманий
-│   ├── PlankAnalyzer.kt         — анализатор планки
-│   └── LungeAnalyzer.kt         — анализатор выпадов
-├── util/
-│   └── AngleMath.kt             — геометрия и углы
-└── ui/theme/
-    ├── Theme.kt                 — тема (тёмная / светлая / системная)
-    ├── Color.kt
-    └── Type.kt
-Ключевые технические решения:
+Проект построен вокруг четырёх независимых анализаторов позы — по одному на каждое упражнение.
 
-Гистерезис фаз — разные пороги для входа и выхода из фазы + подтверждение фазы несколькими кадрами подряд. Это устранило ложные срабатывания от шума MediaPipe.
+Точка входа и навигация:
 
-Проверки положения тела — вертикальная цепочка (нос — бёдра — колени — стопы), минимальная длина ноги, минимальное расстояние между коленями. Отсекает случайные объекты в кадре.
+MainActivity.kt — точка входа, навигация, экран приседаний (PoseScreen)
 
-Максимум углов локтя (для отжиманий) — вместо среднего значения между левым и правым локтем. Один локоть ближе к камере и шумит сильнее — берём тот, что надёжнее.
+Экраны упражнений:
 
-CPU-делегат MediaPipe — обязателен для стабильности на Snapdragon 8 Gen 2. GPU-делегат вызывал SIGSEGV.
+PushupScreen.kt — экран отжиманий
+
+PlankScreen.kt — экран планки
+
+LungeScreen.kt — экран выпадов
+
+ExercisePickerScreen.kt — экран выбора упражнения
+
+Экраны настроек:
+
+SettingsAppScreen.kt — общие настройки (тема, вибрация)
+
+SettingsScreen.kt — настройки приседаний
+
+PushupSettingsScreen.kt — настройки отжиманий
+
+PlankSettingsScreen.kt — настройки планки
+
+LungeSettingsScreen.kt — настройки выпадов
+
+Данные:
+
+AppSettings.kt — SharedPreferences
+
+WorkoutRecord.kt — Room Entity + DAO + Database
+
+WorkoutRepository.kt — репозиторий, streak, рекорды
+
+HistoryScreen.kt — история тренировок
+
+Анализаторы позы (папка pose):
+
+PosePoint.kt — data-класс точки скелета
+
+SquatAnalyzer.kt — анализатор приседаний
+
+PushupAnalyzer.kt — анализатор отжиманий
+
+PlankAnalyzer.kt — анализатор планки
+
+LungeAnalyzer.kt — анализатор выпадов
+
+Утилиты:
+
+util/AngleMath.kt — геометрия и расчёт углов
+
+ui/theme/ — тема (Theme.kt, Color.kt, Type.kt)
+
+Ключевые технические решения
+1. Гистерезис фаз. Разные пороги для входа и выхода из фазы + подтверждение фазы несколькими кадрами подряд. Это устранило ложные срабатывания от шума MediaPipe — без гистерезиса счёт «дёргался» и шёл в никуда.
+
+2. Проверки положения тела. Вертикальная цепочка (нос — бёдра — колени — стопы), минимальная длина ноги, минимальное расстояние между коленями. Это отсекает случайные объекты в кадре (мебель, домашние животные).
+
+3. Максимум углов локтя для отжиманий. Вместо среднего значения между левым и правым локтем — берётся максимум. Один локоть ближе к камере и шумит сильнее, поэтому среднее искажает результат.
+
+4. CPU-делегат MediaPipe. Обязателен для стабильности на Snapdragon 8 Gen 2. GPU-делегат вызывал SIGSEGV (Fatal signal 11) на Xiaomi.
+
+5. Только arm64-v8a. Ограничение ABI через abiFilters — для стабильности на современных процессорах.
 
 Как запустить
-Требования
+Требования:
+
 Android Studio 2026.1.4 или новее
 
 JDK 11
@@ -100,17 +142,20 @@ JDK 11
 
 Android 8.0+
 
-Сборка
-1 Клонировать репозиторий:
-2 git clone https://github.com/vladostorobev1-afk/StudentUse.git
-3 Открыть проект в Android Studio.
-4 Собрать release APK: Build → Build Bundle(s) / APK(s) → Build APK(s).
-5 Установить APK на телефон.
+Сборка:
 
-⚠️ Важно: приложение собирается только через APK, не через Studio Run — из-за несовместимости с агентом Android Studio на некоторых устройствах.
+1 Клонировать репозиторий: git clone https://github.com/vladostorobev1-afk/StudentUse.git
+
+2 Открыть проект в Android Studio
+
+3 Build → Build Bundle(s) / APK(s) → Build APK(s)
+
+4 Установить APK на телефон
+
+Важно: приложение собирается только через APK, не через Studio Run — из-за несовместимости с агентом Android Studio на некоторых устройствах.
 
 Скриншоты
-(добавлю позже — после загрузки в репозиторий)
+Скриншоты будут добавлены после загрузки в репозиторий.
 
 Статус
 ✅ Все 4 упражнения работают
@@ -131,4 +176,3 @@ Android 8.0+
 Email: vladostorobev1@gmail.com
 
 GitHub: @vladostorobev1-afk
-
